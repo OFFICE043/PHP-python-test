@@ -1,68 +1,111 @@
-<?php
+import asyncpg
+import asyncio
+import os
+from dotenv import load_dotenv
 
-$servername = "localhost";
-$username = "baza_nomi";
-$password = "baza_paroli";
-$connect = mysqli_connect($servername, $username, $password, $username);
+# 🔹 .env faylidan ma'lumotlarni yuklaymiz
+load_dotenv()
 
-mysqli_query($connect,"CREATE TABLE IF NOT EXISTS `user_id` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `user_id` varchar(250) NOT NULL,
-  `status` text NOT NULL,
-  `refid` varchar(11) NOT NULL,
-  `sana` varchar(250) NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;");
-mysqli_query($connect,"CREATE TABLE IF NOT EXISTS `status` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `user_id` varchar(250) NOT NULL,
-  `kun` varchar(250) NOT NULL,
-  `date` text NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;");
-mysqli_query($connect,"CREATE TABLE IF NOT EXISTS `send` (
-  `send_id` int(11) NOT NULL,
-  `time1` text CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `time2` text CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `start_id` text CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `stop_id` text CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `admin_id` text CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `message_id` text CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `reply_markup` text CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `step` text CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `time3` text NOT NULL,
-  `time4` text NOT NULL,
-  `time5` text NOT NULL,
-  PRIMARY KEY(`send_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;");
-mysqli_query($connect,"CREATE TABLE IF NOT EXISTS `kabinet` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `user_id` varchar(250) NOT NULL,
-  `pul` varchar(250) NOT NULL,
-  `pul2` varchar(250) NOT NULL,
-  `odam` varchar(250) NOT NULL,
-  `ban` text NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;");
-mysqli_query($connect,"CREATE TABLE IF NOT EXISTS `anime_datas` (
-  `data_id` int(11) NOT NULL AUTO_INCREMENT,
-  `id` text NOT NULL,
-  `file_id` text NOT NULL,
-  `qism` text NOT NULL,
-  `sana` text DEFAULT NULL,
-  PRIMARY KEY (`data_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;");
-mysqli_query($connect,"CREATE TABLE IF NOT EXISTS `animelar` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `nom` text NOT NULL,
-  `rams` text NOT NULL,
-  `qismi` text NOT NULL,
-  `davlat` text NOT NULL,
-  `tili` text NOT NULL,
-  `yili` text NOT NULL,
-  `janri` text NOT NULL,
-  `qidiruv` text NOT NULL,
-  `sana` text NOT NULL,
-  `aniType` text NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;");
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_USER = os.getenv("DB_USER", "baza_nomi")
+DB_PASS = os.getenv("DB_PASS", "baza_paroli")
+DB_NAME = os.getenv("DB_NAME", "baza_nomi")
+
+async def create_pool():
+    """
+    PostgreSQL bilan ulanish hovuzini yaratadi
+    """
+    return await asyncpg.create_pool(
+        host=DB_HOST,
+        user=DB_USER,
+        password=DB_PASS,
+        database=DB_NAME
+    )
+
+async def init_tables(pool):
+    """
+    Agar kerak bo'lsa, kestalarning yaratilishini ta'minlaydi
+    """
+    async with pool.acquire() as conn:
+        # user_id
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS user_id (
+            id SERIAL PRIMARY KEY,
+            user_id VARCHAR(250) NOT NULL,
+            status TEXT NOT NULL,
+            refid VARCHAR(11) NOT NULL,
+            sana VARCHAR(250) NOT NULL
+        );
+        """)
+        # status
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS status (
+            id SERIAL PRIMARY KEY,
+            user_id VARCHAR(250) NOT NULL,
+            kun VARCHAR(250) NOT NULL,
+            date TEXT NOT NULL
+        );
+        """)
+        # send
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS send (
+            send_id SERIAL PRIMARY KEY,
+            time1 TEXT NOT NULL,
+            time2 TEXT NOT NULL,
+            start_id TEXT NOT NULL,
+            stop_id TEXT NOT NULL,
+            admin_id TEXT NOT NULL,
+            message_id TEXT NOT NULL,
+            reply_markup TEXT NOT NULL,
+            step TEXT NOT NULL,
+            time3 TEXT NOT NULL,
+            time4 TEXT NOT NULL,
+            time5 TEXT NOT NULL
+        );
+        """)
+        # kabinet
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS kabinet (
+            id SERIAL PRIMARY KEY,
+            user_id VARCHAR(250) NOT NULL,
+            pul VARCHAR(250) NOT NULL,
+            pul2 VARCHAR(250) NOT NULL,
+            odam VARCHAR(250) NOT NULL,
+            ban TEXT NOT NULL
+        );
+        """)
+        # anime_datas
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS anime_datas (
+            data_id SERIAL PRIMARY KEY,
+            id TEXT NOT NULL,
+            file_id TEXT NOT NULL,
+            qism TEXT NOT NULL,
+            sana TEXT
+        );
+        """)
+        # animelar
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS animelar (
+            id SERIAL PRIMARY KEY,
+            nom TEXT NOT NULL,
+            rams TEXT NOT NULL,
+            qismi TEXT NOT NULL,
+            davlat TEXT NOT NULL,
+            tili TEXT NOT NULL,
+            yili TEXT NOT NULL,
+            janri TEXT NOT NULL,
+            qidiruv TEXT NOT NULL,
+            sana TEXT NOT NULL,
+            aniType TEXT NOT NULL
+        );
+        """)
+
+# 🔹 Test uchun
+if __name__ == "__main__":
+    async def main():
+        pool = await create_pool()
+        await init_tables(pool)
+        print("✅ Baza muvaffaqiyatli tayyor!")
+
+    asyncio.run(main())
